@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Clock</title>
+<style>
+  :root{
+    --bg:#f5f5f5; --fg:#111; --muted:#777; --accent:#111; --face:#fff;
+    --hand:#111; --tick:#111; --glow:0 0 0 transparent;
+  }
+  html.dark{
+    --bg:#000; --fg:#f5f5f5; --muted:#666; --accent:#fff; --face:#0a0a0a;
+    --hand:#f5f5f5; --tick:#f5f5f5;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",system-ui,sans-serif;
+    transition:background .4s ease,color .4s ease,filter .4s ease;
+    user-select:none; touch-action:none;
+  }
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px}
+  .slide{display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+  .slide.active{display:flex}
+  .digital{font-weight:200;font-size:clamp(64px,18vw,260px);letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+  .digital .sec{color:var(--muted);font-size:.45em;vertical-align:top;margin-left:.05em}
+  .date{font-size:clamp(14px,2.2vw,28px);color:var(--muted);letter-spacing:.18em;text-transform:uppercase;font-weight:300}
+  .word-time{font-size:clamp(40px,8vw,120px);font-weight:300;text-align:center;line-height:1.1;max-width:80vw;letter-spacing:-.02em}
+  .word-time .past{color:var(--muted)}
+  .binary{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+  .binary .col{display:flex;flex-direction:column;gap:14px;align-items:center}
+  .binary .dot{width:clamp(14px,2.4vw,28px);height:clamp(14px,2.4vw,28px);border-radius:50%;background:var(--muted);opacity:.18;transition:opacity .2s,background .2s}
+  .binary .dot.on{opacity:1;background:var(--accent)}
+  .binary .lbl{margin-top:8px;font-size:11px;color:var(--muted);letter-spacing:.2em}
+  .flip{display:flex;gap:14px;font-variant-numeric:tabular-nums}
+  .flip .card{background:var(--face);border:1px solid color-mix(in oklab,var(--fg) 12%, transparent);
+    border-radius:16px;padding:.05em .18em;font-size:clamp(56px,14vw,200px);font-weight:300;
+    box-shadow:0 10px 40px color-mix(in oklab,var(--fg) 8%, transparent);min-width:1.2em;text-align:center}
+  .flip .colon{align-self:center;font-size:clamp(40px,8vw,120px);color:var(--muted)}
+  /* analog */
+  svg.clock{width:min(80vmin,560px);height:min(80vmin,560px)}
+  svg.clock .face{fill:var(--face)}
+  svg.clock .ring{stroke:color-mix(in oklab,var(--fg) 14%, transparent);fill:none}
+  svg.clock .tick{stroke:var(--tick)}
+  svg.clock .num{fill:var(--fg);font-size:9px;font-weight:400;font-family:inherit}
+  svg.clock .h,svg.clock .m{stroke:var(--hand);stroke-linecap:round}
+  svg.clock .s{stroke:#e74c3c;stroke-linecap:round}
+  svg.clock .pin{fill:var(--hand)}
+  html.glow .digital,html.glow .word-time,html.glow .flip .card,html.glow .date{
+    text-shadow:0 0 18px color-mix(in oklab,var(--accent) 70%, transparent),
+                0 0 40px color-mix(in oklab,var(--accent) 40%, transparent);
+  }
+  html.glow svg.clock{filter:drop-shadow(0 0 18px color-mix(in oklab,var(--accent) 60%, transparent))}
+  /* settings hot corner */
+  #hot{position:fixed;left:0;top:0;width:80px;height:80px;z-index:10}
+  #gear{position:fixed;left:18px;top:18px;width:34px;height:34px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;background:color-mix(in oklab,var(--fg) 8%, transparent);
+    color:var(--fg);opacity:0;pointer-events:none;transition:opacity .25s ease;cursor:pointer;z-index:11;backdrop-filter:blur(8px)}
+  #gear.show{opacity:.85;pointer-events:auto}
+  #gear:hover{opacity:1}
+  /* settings panel */
+  #panel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:color-mix(in oklab, var(--bg) 70%, transparent);backdrop-filter:blur(20px);z-index:20}
+  #panel.show{display:flex}
+  .card-panel{width:min(560px,92vw);max-height:86vh;overflow:auto;background:var(--face);
+    border:1px solid color-mix(in oklab,var(--fg) 12%, transparent);border-radius:22px;padding:28px;
+    box-shadow:0 30px 80px rgba(0,0,0,.25)}
+  .card-panel h2{margin:0 0 4px;font-weight:500;font-size:22px;letter-spacing:-.01em}
+  .card-panel p.sub{margin:0 0 20px;color:var(--muted);font-size:13px}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid color-mix(in oklab,var(--fg) 8%, transparent);gap:12px}
+  .row:first-of-type{border-top:0}
+  .row label{font-size:14px}
+  .row .hint{color:var(--muted);font-size:11px;display:block;margin-top:2px}
+  select,input[type=text]{background:transparent;color:var(--fg);border:1px solid color-mix(in oklab,var(--fg) 18%, transparent);
+    border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;min-width:180px;outline:none}
+  select option{background:var(--face);color:var(--fg)}
+  .switch{position:relative;width:42px;height:24px;background:color-mix(in oklab,var(--fg) 18%, transparent);border-radius:999px;cursor:pointer;transition:background .2s}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--face);transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch.on{background:#22c55e}
+  .switch.on::after{transform:translateX(18px)}
+  .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:12px;color:var(--muted);margin-top:18px;padding-top:16px;border-top:1px solid color-mix(in oklab,var(--fg) 8%, transparent)}
+  kbd{font-family:inherit;background:color-mix(in oklab,var(--fg) 10%, transparent);padding:1px 8px;border-radius:6px;font-size:11px;color:var(--fg)}
+  .close{position:absolute;top:14px;right:14px;background:none;border:0;color:var(--muted);font-size:22px;cursor:pointer;width:32px;height:32px;border-radius:50%}
+  .close:hover{background:color-mix(in oklab,var(--fg) 10%, transparent);color:var(--fg)}
+  /* widgets canvas */
+  .widget{position:absolute;background:var(--face);border:1px solid color-mix(in oklab,var(--fg) 12%, transparent);
+    border-radius:16px;padding:14px 18px;min-width:120px;cursor:move;font-size:14px}
+  .widget .wlbl{font-size:10px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px}
+  .widget .wval{font-size:28px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .widget-add{position:fixed;bottom:24px;right:24px;display:none;gap:8px;z-index:9}
+  .widget-add.show{display:flex}
+  .widget-add button{background:var(--face);color:var(--fg);border:1px solid color-mix(in oklab,var(--fg) 14%, transparent);
+    border-radius:10px;padding:8px 14px;font:inherit;font-size:12px;cursor:pointer}
+  .widget-add button:hover{background:color-mix(in oklab,var(--fg) 8%, transparent)}
+  .widget .x{position:absolute;top:4px;right:6px;background:none;border:0;color:var(--muted);cursor:pointer;font-size:14px;display:none}
+  .widget:hover .x{display:block}
+  /* slide indicator */
+  #pager{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:6px;opacity:0;transition:opacity .3s;z-index:5}
+  #pager.show{opacity:.6}
+  #pager .d{width:6px;height:6px;border-radius:50%;background:var(--fg);opacity:.3}
+  #pager .d.on{opacity:1}
+  #slidename{position:fixed;top:18px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);opacity:0;transition:opacity .3s;z-index:5}
+  #slidename.show{opacity:.7}
+</style>
+</head>
+<body>
+<div id="hot"></div>
+<button id="gear" title="Settings">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</button>
+
+<div id="slidename"></div>
+<div id="stage"></div>
+<div id="pager"></div>
+<div class="widget-add" id="widgetadd"></div>
+
+<div id="panel">
+  <div class="card-panel" style="position:relative">
+    <button class="close" id="close">&times;</button>
+    <h2>Settings</h2>
+    <p class="sub">Customize your clock</p>
+
+    <div class="row">
+      <div><label>Time zone</label><span class="hint">Where the clock reads time from</span></div>
+      <select id="tz"></select>
+    </div>
+
+    <div class="row">
+      <div><label>Default slide</label><span class="hint">Loaded on next visit</span></div>
+      <select id="defslide"></select>
+    </div>
+
+    <div class="row">
+      <div><label>24-hour format</label></div>
+      <div class="switch" id="sw24"></div>
+    </div>
+
+    <div class="row">
+      <div><label>Show seconds</label></div>
+      <div class="switch" id="swsec"></div>
+    </div>
+
+    <div class="row">
+      <div><label>Glow effect</label><span class="hint">Always on (overrides per-slide)</span></div>
+      <div class="switch" id="swglow"></div>
+    </div>
+
+    <div class="row">
+      <div><label>Dark mode</label><span class="hint">Spacebar toggles instantly</span></div>
+      <div class="switch" id="swdark"></div>
+    </div>
+
+    <div class="row">
+      <div><label>Auto cycle slides</label><span class="hint">Every 30 seconds</span></div>
+      <div class="switch" id="swauto"></div>
+    </div>
+
+    <div class="row">
+      <div><label>Accent color</label></div>
+      <input type="color" id="accent" style="width:48px;height:32px;border:0;background:transparent;cursor:pointer"/>
+    </div>
+
+    <div class="keys">
+      <kbd>Space</kbd><span>Toggle dark mode</span>
+      <kbd>← →</kbd><span>Switch slides</span>
+      <kbd>Swipe</kbd><span>Switch slides (touch)</span>
+      <kbd>F</kbd><span>Fullscreen</span>
+      <kbd>G</kbd><span>Toggle glow</span>
+      <kbd>S</kbd><span>Settings</span>
+      <kbd>Hover ↖</kbd><span>Reveal gear icon</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- state ----------
+  const TZS = [
+    "Europe/Oslo","Europe/London","Europe/Paris","Europe/Berlin","Europe/Madrid",
+    "Europe/Stockholm","Europe/Helsinki","Europe/Moscow",
+    "America/New_York","America/Chicago","America/Denver","America/Los_Angeles",
+    "America/Sao_Paulo","America/Mexico_City","America/Toronto",
+    "Asia/Tokyo","Asia/Shanghai","Asia/Hong_Kong","Asia/Singapore","Asia/Dubai",
+    "Asia/Kolkata","Asia/Seoul","Asia/Bangkok",
+    "Australia/Sydney","Australia/Perth","Pacific/Auckland","Pacific/Honolulu",
+    "Africa/Cairo","Africa/Johannesburg","UTC"
+  ];
+
+  const SLIDES = [
+    {id:"analog",       name:"Analog"},
+    {id:"analog-date",  name:"Analog · Date"},
+    {id:"analog-glow",  name:"Analog · Glow"},
+    {id:"digital",      name:"Digital"},
+    {id:"digital-date", name:"Digital · Date"},
+    {id:"digital-glow", name:"Digital · Glow"},
+    {id:"flip",         name:"Flip"},
+    {id:"word",         name:"Word Clock"},
+    {id:"binary",       name:"Binary"},
+    {id:"minimal",      name:"Minimal"},
+    {id:"mega",         name:"Mega Digital"},
+    {id:"widgets",      name:"Custom Widgets"},
+  ];
+
+  const defaults = {
+    tz:"Europe/Oslo", defSlide:"analog", h24:true, sec:true,
+    glow:false, dark:false, auto:false, accent:"",
+    widgets:[
+      {type:"time",   x:80,  y:120},
+      {type:"date",   x:80,  y:260},
+      {type:"weekday",x:80,  y:380},
+    ],
+  };
+  const KEY = "clock_app_settings_v1";
+  const cfg = Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY)||"{}"));
+  if(!Array.isArray(cfg.widgets)) cfg.widgets = defaults.widgets;
+  const save = () => localStorage.setItem(KEY, JSON.stringify(cfg));
+
+  // ---------- helpers ----------
+  const stage = document.getElementById("stage");
+  const pager = document.getElementById("pager");
+  const slideName = document.getElementById("slidename");
+
+  const fmtParts = (d, tz) => {
+    const f = new Intl.DateTimeFormat("en-GB",{timeZone:tz,hour12:false,
+      hour:"2-digit",minute:"2-digit",second:"2-digit",
+      year:"numeric",month:"long",day:"2-digit",weekday:"long"});
+    const o = {}; f.formatToParts(d).forEach(p=>o[p.type]=p.value);
+    return o;
+  };
+
+  // ---------- build slides ----------
+  SLIDES.forEach(s => {
+    const el = document.createElement("div");
+    el.className = "slide"; el.dataset.id = s.id;
+    stage.appendChild(el);
+    const dot = document.createElement("div");
+    dot.className = "d"; pager.appendChild(dot);
+  });
+
+  function buildAnalog(el, withDate){
+    el.innerHTML = `
+      <svg class="clock" viewBox="-50 -50 100 100">
+        <circle class="face" r="48"/>
+        <circle class="ring" r="48" stroke-width=".6"/>
+        <g id="ticks"></g>
+        <g id="nums"></g>
+        <line class="h" x1="0" y1="6" x2="0" y2="-26" stroke-width="2.2"/>
+        <line class="m" x1="0" y1="8" x2="0" y2="-38" stroke-width="1.6"/>
+        <line class="s" x1="0" y1="10" x2="0" y2="-42" stroke-width=".7"/>
+        <circle class="pin" r="1.6"/>
+      </svg>
+      ${withDate ? `<div class="date" data-date></div>` : ``}
+    `;
+    const ticks = el.querySelector("#ticks"), nums = el.querySelector("#nums");
+    for(let i=0;i<60;i++){
+      const big = i%5===0;
+      const a = i*6*Math.PI/180;
+      const r1 = big?40:43, r2=46;
+      const x1=Math.sin(a)*r1, y1=-Math.cos(a)*r1, x2=Math.sin(a)*r2, y2=-Math.cos(a)*r2;
+      ticks.insertAdjacentHTML("beforeend",
+        `<line class="tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${big?1:.4}"/>`);
+    }
+    for(let i=1;i<=12;i++){
+      const a=i*30*Math.PI/180; const x=Math.sin(a)*34, y=-Math.cos(a)*34+3;
+      nums.insertAdjacentHTML("beforeend",`<text class="num" x="${x}" y="${y}" text-anchor="middle">${i}</text>`);
+    }
+  }
+
+  function buildDigital(el, withDate){
+    el.innerHTML = `<div class="digital" data-time></div>${withDate?`<div class="date" data-date></div>`:``}`;
+  }
+
+  function buildFlip(el){
+    el.innerHTML = `<div class="flip">
+      <div class="card" data-h>00</div><div class="colon">:</div>
+      <div class="card" data-m>00</div><div class="colon">:</div>
+      <div class="card" data-s>00</div></div>
+      <div class="date" data-date></div>`;
+  }
+
+  function buildWord(el){
+    el.innerHTML = `<div class="word-time" data-word></div>`;
+  }
+
+  function buildBinary(el){
+    let cols = "";
+    for(let c=0;c<6;c++){
+      let dots="";
+      for(let r=0;r<4;r++) dots += `<div class="dot"></div>`;
+      cols += `<div class="col">${dots}</div>`;
+    }
+    el.innerHTML = `<div class="binary" data-bin>${cols}</div>`;
+  }
+
+  function buildMinimal(el){
+    el.innerHTML = `<div class="digital" style="font-size:clamp(80px,22vw,340px);font-weight:100" data-time data-mini></div>`;
+  }
+
+  function buildMega(el){
+    el.innerHTML = `<div class="digital" style="font-size:clamp(100px,32vw,500px);font-weight:900;letter-spacing:-0.05em" data-time data-mini></div>`;
+  }
+
+  function buildWidgets(el){
+    el.innerHTML = `<div id="widgetcanvas" style="position:relative;width:100vw;height:100vh"></div>`;
+  }
+
+  function buildAll(){
+    SLIDES.forEach(s=>{
+      const el = stage.querySelector(`[data-id="${s.id}"]`);
+      el.innerHTML = "";
+      if(s.id==="analog") buildAnalog(el,false);
+      else if(s.id==="analog-date") buildAnalog(el,true);
+      else if(s.id==="analog-glow") buildAnalog(el,false);
+      else if(s.id==="digital") buildDigital(el,false);
+      else if(s.id==="digital-date") buildDigital(el,true);
+      else if(s.id==="digital-glow") buildDigital(el,false);
+      else if(s.id==="flip") buildFlip(el);
+      else if(s.id==="word") buildWord(el);
+      else if(s.id==="binary") buildBinary(el);
+      else if(s.id==="minimal") buildMinimal(el);
+      else if(s.id==="mega") buildMega(el);
+      else if(s.id==="widgets") buildWidgets(el);
+    });
+  }
+  buildAll();
+
+  // ---------- word time ----------
+  const ONES=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"];
+  function wordTime(h,m){
+    const h12 = h%12;
+    const nextH = ONES[(h12+1)] || ONES[0];
+    const thisH = ONES[h12] || ONES[0];
+    if(m===0) return `<span>${cap(thisH)} o'clock</span>`;
+    if(m===15) return `<span class="past">Quarter past</span> ${cap(thisH)}`;
+    if(m===30) return `<span class="past">Half past</span> ${cap(thisH)}`;
+    if(m===45) return `<span class="past">Quarter to</span> ${cap(nextH)}`;
+    if(m<30) return `<span class="past">${m} past</span> ${cap(thisH)}`;
+    return `<span class="past">${60-m} to</span> ${cap(nextH)}`;
+  }
+  const cap = s=>s[0].toUpperCase()+s.slice(1);
+
+  // ---------- tick ----------
+  function tick(){
+    const now = new Date();
+    const p = fmtParts(now, cfg.tz);
+    let H = +p.hour, M = +p.minute, S = +p.second;
+    const h12 = ((H+11)%12)+1;
+    const hourDisp = cfg.h24 ? String(H).padStart(2,"0") : String(h12);
+    const timeStr = cfg.sec
+      ? `${hourDisp}:${String(M).padStart(2,"0")}<span class="sec">:${String(S).padStart(2,"0")}</span>`
+      : `${hourDisp}:${String(M).padStart(2,"0")}`;
+    const dateStr = `${p.weekday} · ${p.day} ${p.month} ${p.year}`;
+
+    document.querySelectorAll("[data-time]").forEach(n=>{
+      if(n.dataset.mini!==undefined){
+        n.innerHTML = `${hourDisp}:${String(M).padStart(2,"0")}`;
+      } else n.innerHTML = timeStr;
+    });
+    document.querySelectorAll("[data-date]").forEach(n=>n.textContent = dateStr);
+
+    // analog hands
+    document.querySelectorAll("svg.clock").forEach(svg=>{
+      const ms = (now.getTime()/1000) % 60;
+      const sa = (S + (now.getMilliseconds()/1000)) * 6;
+      const ma = M*6 + S*0.1;
+      const ha = (H%12)*30 + M*0.5;
+      svg.querySelector(".h").setAttribute("transform",`rotate(${ha})`);
+      svg.querySelector(".m").setAttribute("transform",`rotate(${ma})`);
+      svg.querySelector(".s").setAttribute("transform",`rotate(${sa})`);
+    });
+
+    // word
+    document.querySelectorAll("[data-word]").forEach(n=>{
+      const m5 = Math.round(M/5)*5;
+      const adjH = m5===60 ? H+1 : H;
+      n.innerHTML = wordTime(adjH%24, m5%60);
+    });
+
+    // flip
+    document.querySelectorAll(".flip").forEach(f=>{
+      f.querySelector("[data-h]").textContent = String(cfg.h24?H:h12).padStart(2,"0");
+      f.querySelector("[data-m]").textContent = String(M).padStart(2,"0");
+      f.querySelector("[data-s]").textContent = String(S).padStart(2,"0");
+    });
+
+    // binary BCD: cols = H10 H1 M10 M1 S10 S1
+    document.querySelectorAll("[data-bin]").forEach(b=>{
+      const vals = [Math.floor(H/10),H%10,Math.floor(M/10),M%10,Math.floor(S/10),S%10];
+      [...b.children].forEach((col,ci)=>{
+        const v = vals[ci];
+        [...col.children].forEach((d,ri)=>{
+          const bit = (v >> (3-ri)) & 1;
+          d.classList.toggle("on", !!bit);
+        });
+      });
+    });
+
+    // widgets
+    document.querySelectorAll(".widget").forEach(w=>{
+      const t = w.dataset.type;
+      const v = w.querySelector(".wval");
+      if(!v) return;
+      if(t==="time") v.textContent = `${hourDisp}:${String(M).padStart(2,"0")}`;
+      else if(t==="seconds") v.textContent = String(S).padStart(2,"0");
+      else if(t==="date") v.textContent = `${p.day} ${p.month}`;
+      else if(t==="weekday") v.textContent = p.weekday;
+      else if(t==="year") v.textContent = p.year;
+      else if(t==="tz") v.textContent = cfg.tz.split("/").pop().replace("_"," ");
+    });
+  }
+  setInterval(tick, 200); tick();
+
+  // ---------- slides ----------
+  let idx = Math.max(0, SLIDES.findIndex(s=>s.id===cfg.defSlide));
+  if(idx<0) idx=0;
+  function applyGlow(){
+    const slideId = SLIDES[idx].id;
+    const slideGlow = slideId.endsWith("-glow");
+    document.documentElement.classList.toggle("glow", cfg.glow || slideGlow);
+  }
+  function show(i){
+    idx = (i+SLIDES.length)%SLIDES.length;
+    [...stage.children].forEach((el,k)=>el.classList.toggle("active",k===idx));
+    [...pager.children].forEach((el,k)=>el.classList.toggle("on",k===idx));
+    slideName.textContent = SLIDES[idx].name;
+    slideName.classList.add("show"); pager.classList.add("show");
+    clearTimeout(show._t); show._t = setTimeout(()=>{slideName.classList.remove("show");pager.classList.remove("show")},1600);
+    document.getElementById("widgetadd").classList.toggle("show", SLIDES[idx].id==="widgets");
+    applyGlow();
+  }
+  show(idx);
+
+  // ---------- input ----------
+  addEventListener("keydown", e=>{
+    if(document.getElementById("panel").classList.contains("show")) {
+      if(e.key==="Escape") closePanel();
+      return;
+    }
+    if(e.code==="Space"){ e.preventDefault(); toggleDim(); }
+    else if(e.key==="ArrowRight") show(idx+1);
+    else if(e.key==="ArrowLeft") show(idx-1);
+    else if(e.key.toLowerCase()==="f"){ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+    else if(e.key.toLowerCase()==="g"){ cfg.glow=!cfg.glow; save(); applyGlow(); syncSettings(); }
+    else if(e.key.toLowerCase()==="s") openPanel();
+  });
+
+  let tx=0,ty=0;
+  addEventListener("touchstart",e=>{const t=e.touches[0];tx=t.clientX;ty=t.clientY},{passive:true});
+  addEventListener("touchend",e=>{
+    const t=e.changedTouches[0]; const dx=t.clientX-tx, dy=t.clientY-ty;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)) show(idx + (dx<0?1:-1));
+    else if(Math.abs(dx)<10 && Math.abs(dy)<10){
+      // tap top-left
+      if(t.clientX<80 && t.clientY<80) openPanel();
+    }
+  },{passive:true});
+
+  // toggle dark mode
+  function toggleDim(){
+    const html = document.documentElement;
+    if(!html.classList.contains("dark")){
+      html.classList.add("dark");
+      cfg.dark=true; save(); syncSettings();
+    } else {
+      html.classList.remove("dark");
+      cfg.dark=false; save(); syncSettings();
+    }
+  }
+
+  // ---------- gear hot corner ----------
+  const gear = document.getElementById("gear");
+  const hot = document.getElementById("hot");
+  let gearTimer;
+  function showGear(){
+    gear.classList.add("show"); clearTimeout(gearTimer);
+    gearTimer = setTimeout(()=>gear.classList.remove("show"), 2200);
+  }
+  addEventListener("mousemove", e=>{
+    if(e.clientX<100 && e.clientY<100) showGear();
+  });
+  hot.addEventListener("mouseenter", showGear);
+  gear.addEventListener("mouseenter", showGear);
+  gear.addEventListener("click", openPanel);
+
+  // ---------- settings panel ----------
+  const panel = document.getElementById("panel");
+  const tzSel = document.getElementById("tz");
+  const dsSel = document.getElementById("defslide");
+  TZS.forEach(z=>{const o=document.createElement("option");o.value=z;o.textContent=z;tzSel.appendChild(o)});
+  SLIDES.forEach(s=>{const o=document.createElement("option");o.value=s.id;o.textContent=s.name;dsSel.appendChild(o)});
+
+  function syncSettings(){
+    tzSel.value = cfg.tz;
+    dsSel.value = cfg.defSlide;
+    setSwitch("sw24", cfg.h24);
+    setSwitch("swsec", cfg.sec);
+    setSwitch("swglow", cfg.glow);
+    setSwitch("swdark", cfg.dark);
+    setSwitch("swauto", cfg.auto);
+    document.getElementById("accent").value = cfg.accent || "#111111";
+    document.documentElement.classList.toggle("dark", cfg.dark);
+    if(cfg.accent){
+      document.documentElement.style.setProperty("--accent", cfg.accent);
+      document.documentElement.style.setProperty("--hand", cfg.accent);
+    } else {
+      document.documentElement.style.removeProperty("--accent");
+      document.documentElement.style.removeProperty("--hand");
+    }
+    applyGlow();
+  }
+  function setSwitch(id,on){document.getElementById(id).classList.toggle("on",!!on)}
+  function bindSwitch(id, key, after){
+    document.getElementById(id).addEventListener("click",()=>{cfg[key]=!cfg[key];save();syncSettings();after&&after();});
+  }
+  bindSwitch("sw24","h24"); bindSwitch("swsec","sec"); bindSwitch("swglow","glow");
+  bindSwitch("swdark","dark");
+  bindSwitch("swauto","auto",setupAuto);
+  tzSel.addEventListener("change",()=>{cfg.tz=tzSel.value;save();tick();});
+  dsSel.addEventListener("change",()=>{cfg.defSlide=dsSel.value;save();});
+  document.getElementById("accent").addEventListener("input",e=>{cfg.accent=e.target.value;save();syncSettings();});
+  document.getElementById("close").addEventListener("click",closePanel);
+  panel.addEventListener("click",e=>{if(e.target===panel)closePanel()});
+
+  function openPanel(){syncSettings();panel.classList.add("show");}
+  function closePanel(){panel.classList.remove("show");}
+
+  // auto cycle
+  let autoTimer;
+  function setupAuto(){
+    clearInterval(autoTimer);
+    if(cfg.auto) autoTimer = setInterval(()=>show(idx+1), 30000);
+  }
+  setupAuto();
+
+  // ---------- widgets ----------
+  const WTYPES = [
+    {t:"time",label:"Time"},{t:"seconds",label:"Seconds"},{t:"date",label:"Date"},
+    {t:"weekday",label:"Weekday"},{t:"year",label:"Year"},{t:"tz",label:"Zone"}
+  ];
+  const wadd = document.getElementById("widgetadd");
+  WTYPES.forEach(w=>{
+    const b=document.createElement("button");b.textContent="+ "+w.label;
+    b.onclick=()=>{cfg.widgets.push({type:w.t,x:120,y:120});save();renderWidgets();};
+    wadd.appendChild(b);
+  });
+
+  function renderWidgets(){
+    const c = document.getElementById("widgetcanvas"); if(!c) return;
+    c.innerHTML="";
+    cfg.widgets.forEach((w,i)=>{
+      const el=document.createElement("div");
+      el.className="widget"; el.dataset.type=w.type;
+      el.style.left=w.x+"px"; el.style.top=w.y+"px";
+      el.innerHTML=`<button class="x" title="Remove">×</button>
+        <div class="wlbl">${w.type}</div><div class="wval">--</div>`;
+      el.querySelector(".x").onclick=(e)=>{e.stopPropagation();cfg.widgets.splice(i,1);save();renderWidgets();};
+      // drag
+      let sx,sy,ox,oy,drag=false;
+      el.addEventListener("pointerdown",e=>{
+        if(e.target.classList.contains("x"))return;
+        drag=true;sx=e.clientX;sy=e.clientY;ox=w.x;oy=w.y;el.setPointerCapture(e.pointerId);
+      });
+      el.addEventListener("pointermove",e=>{
+        if(!drag)return;
+        w.x=Math.max(0,ox+e.clientX-sx); w.y=Math.max(0,oy+e.clientY-sy);
+        el.style.left=w.x+"px"; el.style.top=w.y+"px";
+      });
+      el.addEventListener("pointerup",()=>{if(drag){drag=false;save();}});
+      c.appendChild(el);
+    });
+    tick();
+  }
+  renderWidgets();
+
+  syncSettings();
+})();
+</script>
+</body>
+</html>
