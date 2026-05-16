@@ -85,12 +85,12 @@
   .close:hover{background:color-mix(in oklab,var(--fg) 10%, transparent);color:var(--fg)}
   /* widgets canvas */
   .widget{position:absolute;background:transparent;border:1px solid transparent;
-    padding:8px;min-width:100px;cursor:move;font-size:14px;transform-origin:top left;border-radius:12px}
+    padding:calc(8px * var(--inv, 1));min-width:calc(100px * var(--inv, 1));cursor:move;font-size:14px;transform-origin:top left;border-radius:12px}
   .widget.selected{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 5%, transparent)}
   .widget .wlbl{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;font-weight:500}
   .widget .wval{font-size:32px;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-  .widget .resizer{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;display:none;
-    transform:scale(var(--inv, 1));transform-origin:bottom right}
+  .widget .resizer{position:absolute;bottom:calc(-4px * var(--inv, 1));right:calc(-4px * var(--inv, 1));width:24px;height:24px;cursor:nwse-resize;display:none;
+    transform:scale(var(--inv, 1));transform-origin:bottom right;z-index:15}
   .widget:hover .resizer{display:block}
   .widget .resizer::after{content:"";position:absolute;bottom:4px;right:4px;width:4px;height:4px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted)}
   .widget-add{position:fixed;bottom:24px;right:24px;display:none;gap:8px;z-index:9}
@@ -181,6 +181,24 @@
     </div>
 
     <div class="row">
+      <div><label>Show Weather globally</label><span class="hint">On analog and digital slides</span></div>
+      <div class="switch" id="swweather"></div>
+    </div>
+
+    <div class="row" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><label>Weather Location</label><span class="hint" id="loc-name">Berlin, Germany</span></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="loc-search" placeholder="Search city (e.g. Munich, Germany)" style="flex:1;min-width:0">
+        <button id="loc-btn" style="background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:0 16px;cursor:pointer;font-size:13px">Search</button>
+      </div>
+      <div id="loc-results" style="display:none;flex-direction:column;gap:4px;background:color-mix(in oklab,var(--fg) 5%, transparent);padding:8px;border-radius:10px;max-height:150px;overflow:auto"></div>
+    </div>
+
+    <div id="custom-slides-list" style="margin-top:20px"></div>
+
+    <div class="row">
       <div><label>Accent color</label></div>
       <input type="color" id="accent" style="width:48px;height:32px;border:0;background:transparent;cursor:pointer"/>
     </div>
@@ -211,7 +229,7 @@
     "Africa/Cairo","Africa/Johannesburg","UTC"
   ];
 
-  const SLIDES = [
+  let SLIDES = [
     {id:"analog",       name:"Analog"},
     {id:"analog-date",  name:"Analog · Date"},
     {id:"analog-glow",  name:"Analog · Glow"},
@@ -229,12 +247,14 @@
 
   const defaults = {
     tz:"Europe/Oslo", defSlide:"analog", h24:true, sec:true,
-    glow:false, dark:false, auto:false, accent:"", useF:false,
+    glow:false, dark:false, auto:false, accent:"", useF:false, showWeather:true,
     widgets:[
       {type:"time",   x:80,  y:120},
       {type:"date",   x:80,  y:260},
       {type:"weekday",x:80,  y:380},
     ],
+    customSlides:[],
+    loc: {name: "Berlin, Germany", lat: 52.52, lon: 13.41}
   };
   const KEY = "clock_app_settings_v1";
   const cfg = Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY)||"{}"));
@@ -358,14 +378,24 @@
     el.querySelector("#widgetcanvas").onclick = (e)=>{
       if(e.target.id === "widgetcanvas") {
         selectedWidgetId = null;
-        renderWidgets();
+        document.querySelectorAll(".widget").forEach(node => node.classList.remove("selected"));
       }
     };
   }
 
   function buildAll(){
+    stage.innerHTML = ""; pager.innerHTML = "";
+    SLIDES.forEach(s => {
+      const el = document.createElement("div");
+      el.className = "slide"; el.dataset.id = s.id;
+      stage.appendChild(el);
+      const dot = document.createElement("div");
+      dot.className = "d"; pager.appendChild(dot);
+    });
+
     SLIDES.forEach(s=>{
       const el = stage.querySelector(`[data-id="${s.id}"]`);
+      if(!el) return;
       el.innerHTML = "";
       if(s.id==="analog") buildAnalog(el,false);
       else if(s.id==="analog-date") buildAnalog(el,true);
@@ -380,10 +410,31 @@
       else if(s.id==="mega") buildMega(el);
       else if(s.id==="zones") buildZones(el);
       else if(s.id==="widgets") buildWidgets(el);
+      else if(s.id.startsWith("custom-")) buildCustomSlide(el, s.widgets);
+    });
+    if(typeof idx !== 'undefined') show(idx, true);
+  }
+  
+  function buildCustomSlide(el, widgets) {
+    el.innerHTML = `<div class="custom-slide-canvas" style="position:relative;width:100vw;height:100vh"></div>`;
+    const canvas = el.querySelector(".custom-slide-canvas");
+    widgets.forEach(w => {
+      const wel = document.createElement("div");
+      wel.className = "widget"; wel.dataset.type = w.type;
+      if(w.hideLbl) wel.classList.add("hide-lbl");
+      if(w.bold) wel.classList.add("bold");
+      wel.style.left = w.x + "px"; wel.style.top = w.y + "px";
+      const s = w.s || 1;
+      wel.style.transform = `scale(${s})`;
+      wel.style.setProperty("--inv", 1/s);
+      const isAnalog = w.type === 'analog';
+      wel.innerHTML = `<div class="wlbl">${w.type}</div><div class="wval">${isAnalog ? `
+        <svg class="clock" viewBox="-50 -50 100 100" style="width:100px;height:100px">
+          <circle class="face" r="48"/><line class="h" x1="0" y1="6" x2="0" y2="-26" stroke-width="2.5"/><line class="m" x1="0" y1="8" x2="0" y2="-38" stroke-width="1.8"/><line class="s" x1="0" y1="10" x2="0" y2="-42" stroke-width="1"/>
+        </svg>` : '--'}</div>`;
+      canvas.appendChild(wel);
     });
   }
-  buildAll();
-
   // ---------- word time ----------
   const ONES=["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"];
   function wordTime(h,m){
@@ -466,7 +517,22 @@
       else if(t==="weekday") v.textContent = p.weekday;
       else if(t==="year") v.textContent = p.year;
       else if(t==="tz") v.textContent = cfg.tz.split("/").pop().replace("_"," ");
-      else if(t==="weather") v.textContent = weatherData ? Math.round(weatherData.temperature)+"°C" : "--";
+      else if(t==="weather") {
+        if(!weatherData) { v.textContent = "--"; return; }
+        const icons = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",61:"🌧️",71:"🌨️",95:"⛈️"};
+        const icon = icons[weatherData.weathercode] || "☀️";
+        const tempC = weatherData.temperature;
+        const temp = cfg.useF ? Math.round(tempC * 9/5 + 32) : Math.round(tempC);
+        const unit = cfg.useF ? "°F" : "°C";
+        const city = cfg.loc.name.split(",")[0];
+        const wCfg = cfg.widgets.find(x=>x.id === w.dataset.wid);
+        let str = `${temp}${unit}`;
+        if(wCfg) {
+          if(wCfg.showIcon) str = `${icon} ${str}`;
+          if(wCfg.showLoc) str = `${str} ${city}`;
+        }
+        v.textContent = str;
+      }
       else if(t==="battery") v.textContent = batteryLevel;
       else if(t==="week") {
         const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+3-(d.getDay()+6)%7);
@@ -581,7 +647,22 @@
     setSwitch("swdark", cfg.dark);
     setSwitch("swauto", cfg.auto);
     setSwitch("swunit", cfg.useF);
+    setSwitch("swweather", cfg.showWeather);
+    document.getElementById("loc-name").textContent = cfg.loc.name;
     document.getElementById("accent").value = cfg.accent || "#111111";
+    
+    const list = document.getElementById("custom-slides-list");
+    list.innerHTML = cfg.customSlides.length ? `<p class="sub" style="margin-bottom:10px">Manage Custom Slides</p>` : "";
+    cfg.customSlides.forEach((s, i) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<div><label>${s.name}</label></div><button class="x" style="font-size:18px;background:none;border:0;color:var(--muted);cursor:pointer">×</button>`;
+      row.querySelector(".x").onclick = () => {
+        cfg.customSlides.splice(i, 1);
+        save(); updateSlidesArray(); buildAll(); syncSettings();
+      };
+      list.appendChild(row);
+    });
     document.documentElement.classList.toggle("dark", cfg.dark);
     if(cfg.accent){
       document.documentElement.style.setProperty("--accent", cfg.accent);
@@ -600,9 +681,47 @@
   bindSwitch("swdark","dark");
   bindSwitch("swauto","auto",setupAuto);
   bindSwitch("swunit","useF",()=>{tick(); updateWeatherUI();});
+  bindSwitch("swweather","showWeather",()=>{tick(); updateWeatherUI();});
   tzSel.addEventListener("change",()=>{cfg.tz=tzSel.value;save();tick();});
   dsSel.addEventListener("change",()=>{cfg.defSlide=dsSel.value;save();});
   document.getElementById("accent").addEventListener("input",e=>{cfg.accent=e.target.value;save();syncSettings();});
+  
+  const locSearch = document.getElementById("loc-search");
+  const locBtn = document.getElementById("loc-btn");
+  const locResults = document.getElementById("loc-results");
+  
+  async function searchLoc() {
+    const q = locSearch.value.trim(); if(!q) return;
+    locBtn.textContent = "...";
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en&format=json`);
+      const data = await res.json();
+      locResults.innerHTML = "";
+      if(data.results) {
+        locResults.style.display = "flex";
+        data.results.forEach(r => {
+          const b = document.createElement("button");
+          b.className = "row"; b.style.border = "0"; b.style.padding = "6px 8px"; b.style.textAlign = "left"; b.style.background = "none"; b.style.cursor = "pointer";
+          const name = `${r.name}${r.admin1 ? `, ${r.admin1}` : ""}, ${r.country}`;
+          b.innerHTML = `<div style="font-size:12px;color:var(--fg)">${name}</div>`;
+          b.onclick = () => {
+            cfg.loc = {name, lat: r.latitude, lon: r.longitude};
+            save(); syncSettings(); fetchWeather();
+            locResults.style.display = "none"; locSearch.value = "";
+          };
+          locResults.appendChild(b);
+        });
+      } else {
+        locResults.style.display = "flex";
+        locResults.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:4px">No results found</div>`;
+      }
+    } catch(e) { console.error(e); }
+    locBtn.textContent = "Search";
+  }
+  
+  locBtn.onclick = searchLoc;
+  locSearch.onkeydown = e => { if(e.key === "Enter") searchLoc(); };
+
   document.getElementById("close").addEventListener("click",closePanel);
   panel.addEventListener("click",e=>{if(e.target===panel)closePanel()});
 
@@ -621,7 +740,7 @@
   let weatherData = null;
   async function fetchWeather(){
     try {
-      const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=59.91&longitude=10.75&current_weather=true");
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${cfg.loc.lat}&longitude=${cfg.loc.lon}&current_weather=true`);
       const data = await res.json();
       weatherData = data.current_weather;
       updateWeatherUI();
@@ -634,23 +753,25 @@
     const tempC = weatherData.temperature;
     const temp = cfg.useF ? Math.round(tempC * 9/5 + 32) : Math.round(tempC);
     const unit = cfg.useF ? "°F" : "°C";
+    const city = cfg.loc.name.split(",")[0];
     
     document.querySelectorAll("#w-icon").forEach(n=>n.textContent = icon);
     document.querySelectorAll("#w-temp").forEach(n=>n.textContent = temp + unit);
     document.querySelectorAll("#w-desc").forEach(n=>n.textContent = "Current Weather");
     document.querySelectorAll("[data-weather-inline]").forEach(n=>{
+      if(!cfg.showWeather) { n.textContent = ""; return; }
       const showLoc = n.dataset.loc === "true";
-      n.textContent = `${icon} ${temp}${unit}${showLoc ? " · Oslo" : ""}`;
-    });
-    document.querySelectorAll("[data-type=temp]").forEach(n=>{
-      const w = cfg.widgets.find(x=>x.id === n.dataset.wid);
-      const val = n.querySelector(".wval");
-      if(w && w.showLoc) val.textContent = `${temp}${unit} ${icon} Oslo`;
-      else val.textContent = `${temp}${unit} ${icon}`;
+      n.textContent = `${icon} ${temp}${unit}${showLoc ? ` · ${city}` : ""}`;
     });
     document.querySelectorAll("[data-type=weather]").forEach(n=>{
+      const w = cfg.widgets.find(x=>x.id === n.dataset.wid);
       const val = n.querySelector(".wval");
-      val.textContent = icon;
+      if(w) {
+        let str = `${temp}${unit}`;
+        if(w.showIcon) str = `${icon} ${str}`;
+        if(w.showLoc) str = `${str} ${city}`;
+        val.textContent = str;
+      }
     });
   }
   setInterval(fetchWeather, 600000); fetchWeather();
@@ -666,21 +787,48 @@
   const WTYPES = [
     {t:"time",label:"Time"},{t:"seconds",label:"Seconds"},{t:"date",label:"Date"},
     {t:"weekday",label:"Weekday"},{t:"year",label:"Year"},{t:"tz",label:"Zone"},
-    {t:"temp",label:"Temperature"},{t:"weather",label:"Weather Icon"},{t:"battery",label:"Battery"},
+    {t:"weather",label:"Weather"},{t:"battery",label:"Battery"},
     {t:"week",label:"Week"},{t:"analog",label:"Analog Clock"}
   ];
   
   const wadd = document.getElementById("widgetadd");
-  wadd.innerHTML = `<button id="plus-btn" style="width:44px;height:44px;border-radius:50%;font-size:24px;display:flex;align-items:center;justify-content:center">+</button>
-    <div id="plus-menu" class="w-menu" style="bottom:50px;right:0;top:auto"></div>`;
+  wadd.innerHTML = `
+    <div class="plus-wrap" style="display:flex;flex-direction:column;gap:8px;align-items:center">
+      <button id="save-btn" title="Save as New Slide" style="width:36px;height:36px;border-radius:50%;font-size:16px;display:none;align-items:center;justify-content:center;opacity:0.7">💾</button>
+      <button id="plus-btn" style="width:44px;height:44px;border-radius:50%;font-size:24px;display:flex;align-items:center;justify-content:center">+</button>
+    </div>
+    <div id="plus-menu" class="w-menu" style="bottom:60px;right:0;top:auto"></div>`;
   const pbtn = document.getElementById("plus-btn");
+  const sbtn = document.getElementById("save-btn");
   const pmenu = document.getElementById("plus-menu");
+  const pwrap = wadd.querySelector(".plus-wrap");
+  
+  pwrap.onmouseenter = () => sbtn.style.display = "flex";
+  pwrap.onmouseleave = () => sbtn.style.display = "none";
+  
   pbtn.onclick = (e)=>{e.stopPropagation(); pmenu.classList.toggle("show");};
+  sbtn.onclick = (e)=>{
+    e.stopPropagation();
+    const name = prompt("Enter name for this slide:", "My Dashboard");
+    if(!name) return;
+    const id = "custom-" + Date.now();
+    cfg.customSlides.push({id, name, widgets: JSON.parse(JSON.stringify(cfg.widgets))});
+    save(); updateSlidesArray(); buildAll();
+  };
+  
   WTYPES.forEach(w=>{
     const b=document.createElement("button");b.textContent=w.label;
     b.onclick=()=>{cfg.widgets.push({type:w.t,x:120,y:120});save();renderWidgets();pmenu.classList.remove("show");};
     pmenu.appendChild(b);
   });
+  
+  function updateSlidesArray() {
+    SLIDES = SLIDES.filter(s => !s.id.startsWith("custom-"));
+    const widgetsIdx = SLIDES.findIndex(s => s.id === "widgets");
+    SLIDES.splice(widgetsIdx, 0, ...cfg.customSlides);
+  }
+  updateSlidesArray();
+  buildAll();
 
   function renderWidgets(){
     const c = document.getElementById("widgetcanvas"); if(!c) return;
@@ -714,7 +862,10 @@
         <div class="w-menu">
           <button class="opt-lbl ${w.hideLbl?'on':''}">Hide Headline <span class="check">✓</span></button>
           <button class="opt-bold ${w.bold?'on':''}">Bold Text <span class="check">✓</span></button>
-          ${w.type==='temp'?`<button class="opt-loc ${w.showLoc?'on':''}">Show Location <span class="check">✓</span></button>`:''}
+          ${w.type==='weather'?`
+            <button class="opt-icon ${w.showIcon?'on':''}">Show Icon <span class="check">✓</span></button>
+            <button class="opt-loc ${w.showLoc?'on':''}">Show Location <span class="check">✓</span></button>
+          `:''}
         </div>`;
       
       const menu = el.querySelector(".w-menu");
@@ -730,7 +881,10 @@
       el.querySelector(".opt-bold").onclick=(e)=>{
         e.stopPropagation(); w.bold=!w.bold; save(); renderWidgets();
       };
-      if(w.type==='temp'){
+      if(w.type==='weather'){
+        el.querySelector(".opt-icon").onclick=(e)=>{
+          e.stopPropagation(); w.showIcon=!w.showIcon; save(); renderWidgets(); updateWeatherUI();
+        };
         el.querySelector(".opt-loc").onclick=(e)=>{
           e.stopPropagation(); w.showLoc=!w.showLoc; save(); renderWidgets(); updateWeatherUI();
         };
@@ -740,10 +894,13 @@
       let sx,sy,ox,oy,os,mode=null;
       el.addEventListener("pointerdown",e=>{
         if(e.target.closest(".controls") || e.target.closest(".w-menu"))return;
-        selectedWidgetId = w.id;
-        renderWidgets();
+        const isResizer = e.target.classList.contains("resizer");
+        if(!isResizer) {
+          selectedWidgetId = w.id;
+          document.querySelectorAll(".widget").forEach(node => node.classList.toggle("selected", node.dataset.wid === selectedWidgetId));
+        }
         sx=e.clientX; sy=e.clientY; ox=w.x; oy=w.y; os=w.s||1;
-        mode = e.target.classList.contains("resizer") ? "resize" : "drag";
+        mode = isResizer ? "resize" : "drag";
         el.setPointerCapture(e.pointerId);
         document.querySelectorAll(".w-menu").forEach(m=>m.classList.remove("show"));
       });
