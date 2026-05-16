@@ -84,9 +84,12 @@
   .close:hover{background:color-mix(in oklab,var(--fg) 10%, transparent);color:var(--fg)}
   /* widgets canvas */
   .widget{position:absolute;background:var(--face);border:1px solid color-mix(in oklab,var(--fg) 12%, transparent);
-    border-radius:16px;padding:14px 18px;min-width:120px;cursor:move;font-size:14px}
+    border-radius:16px;padding:14px 18px;min-width:120px;cursor:move;font-size:14px;transform-origin:top left}
   .widget .wlbl{font-size:10px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px}
   .widget .wval{font-size:28px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .widget .resizer{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;display:none}
+  .widget:hover .resizer{display:block}
+  .widget .resizer::after{content:"";position:absolute;bottom:4px;right:4px;width:4px;height:4px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted)}
   .widget-add{position:fixed;bottom:24px;right:24px;display:none;gap:8px;z-index:9}
   .widget-add.show{display:flex}
   .widget-add button{background:var(--face);color:var(--fg);border:1px solid color-mix(in oklab,var(--fg) 14%, transparent);
@@ -551,21 +554,32 @@
       const el=document.createElement("div");
       el.className="widget"; el.dataset.type=w.type;
       el.style.left=w.x+"px"; el.style.top=w.y+"px";
+      if(w.s) el.style.transform = `scale(${w.s})`;
       el.innerHTML=`<button class="x" title="Remove">×</button>
-        <div class="wlbl">${w.type}</div><div class="wval">--</div>`;
+        <div class="wlbl">${w.type}</div><div class="wval">--</div>
+        <div class="resizer"></div>`;
       el.querySelector(".x").onclick=(e)=>{e.stopPropagation();cfg.widgets.splice(i,1);save();renderWidgets();};
-      // drag
-      let sx,sy,ox,oy,drag=false;
+      
+      // drag & resize
+      let sx,sy,ox,oy,os,mode=null;
       el.addEventListener("pointerdown",e=>{
         if(e.target.classList.contains("x"))return;
-        drag=true;sx=e.clientX;sy=e.clientY;ox=w.x;oy=w.y;el.setPointerCapture(e.pointerId);
+        sx=e.clientX; sy=e.clientY; ox=w.x; oy=w.y; os=w.s||1;
+        mode = e.target.classList.contains("resizer") ? "resize" : "drag";
+        el.setPointerCapture(e.pointerId);
       });
       el.addEventListener("pointermove",e=>{
-        if(!drag)return;
-        w.x=Math.max(0,ox+e.clientX-sx); w.y=Math.max(0,oy+e.clientY-sy);
-        el.style.left=w.x+"px"; el.style.top=w.y+"px";
+        if(!mode)return;
+        if(mode==="drag"){
+          w.x=Math.max(0,ox+e.clientX-sx); w.y=Math.max(0,oy+e.clientY-sy);
+          el.style.left=w.x+"px"; el.style.top=w.y+"px";
+        } else {
+          const dx = e.clientX-sx;
+          w.s = Math.max(0.5, Math.min(5, os + dx/150));
+          el.style.transform = `scale(${w.s})`;
+        }
       });
-      el.addEventListener("pointerup",()=>{if(drag){drag=false;save();}});
+      el.addEventListener("pointerup",()=>{if(mode){mode=null;save();}});
       c.appendChild(el);
     });
     tick();
