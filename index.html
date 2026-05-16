@@ -75,19 +75,22 @@
     border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;min-width:180px;outline:none}
   select option{background:var(--face);color:var(--fg)}
   .switch{position:relative;width:42px;height:24px;background:color-mix(in oklab,var(--fg) 18%, transparent);border-radius:999px;cursor:pointer;transition:background .2s}
-  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--face);transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
-  .switch.on{background:#22c55e}
-  .switch.on::after{transform:translateX(18px)}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--fg);transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch.on{background:var(--accent)}
+  .switch.on::after{transform:translateX(18px);background:var(--bg)}
+  html.dark .switch.on::after{background:var(--fg)}
   .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:12px;color:var(--muted);margin-top:18px;padding-top:16px;border-top:1px solid color-mix(in oklab,var(--fg) 8%, transparent)}
   kbd{font-family:inherit;background:color-mix(in oklab,var(--fg) 10%, transparent);padding:1px 8px;border-radius:6px;font-size:11px;color:var(--fg)}
   .close{position:absolute;top:14px;right:14px;background:none;border:0;color:var(--muted);font-size:22px;cursor:pointer;width:32px;height:32px;border-radius:50%}
   .close:hover{background:color-mix(in oklab,var(--fg) 10%, transparent);color:var(--fg)}
   /* widgets canvas */
-  .widget{position:absolute;background:var(--face);border:1px solid color-mix(in oklab,var(--fg) 12%, transparent);
-    border-radius:16px;padding:14px 18px;min-width:120px;cursor:move;font-size:14px;transform-origin:top left}
-  .widget .wlbl{font-size:10px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px}
-  .widget .wval{font-size:28px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-  .widget .resizer{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;display:none}
+  .widget{position:absolute;background:transparent;border:1px solid transparent;
+    padding:8px;min-width:100px;cursor:move;font-size:14px;transform-origin:top left;border-radius:12px}
+  .widget.selected{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 5%, transparent)}
+  .widget .wlbl{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;font-weight:500}
+  .widget .wval{font-size:32px;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .widget .resizer{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;display:none;
+    transform:scale(var(--inv, 1));transform-origin:bottom right}
   .widget:hover .resizer{display:block}
   .widget .resizer::after{content:"";position:absolute;bottom:4px;right:4px;width:4px;height:4px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted)}
   .widget-add{position:fixed;bottom:24px;right:24px;display:none;gap:8px;z-index:9}
@@ -95,8 +98,22 @@
   .widget-add button{background:var(--face);color:var(--fg);border:1px solid color-mix(in oklab,var(--fg) 14%, transparent);
     border-radius:10px;padding:8px 14px;font:inherit;font-size:12px;cursor:pointer}
   .widget-add button:hover{background:color-mix(in oklab,var(--fg) 8%, transparent)}
-  .widget .x{position:absolute;top:4px;right:6px;background:none;border:0;color:var(--muted);cursor:pointer;font-size:14px;display:none}
-  .widget:hover .x{display:block}
+  .widget .controls{position:absolute;top:calc(-24px * var(--inv, 1));right:0;display:none;gap:8px;z-index:10;background:var(--face);padding:2px 8px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);border:1px solid color-mix(in oklab,var(--fg) 8%, transparent);
+    transform:scale(var(--inv, 1));transform-origin:bottom right}
+  .widget:hover .controls{display:flex}
+  .widget .controls button{background:none;border:0;color:var(--muted);cursor:pointer;font-size:12px;padding:2px;display:flex;align-items:center;justify-content:center}
+  .widget .controls button:hover{color:var(--fg)}
+  .widget.hide-lbl .wlbl{display:none}
+  .widget.bold .wval{font-weight:700}
+  /* widget menu */
+  .w-menu{position:absolute;top:calc(100% + 4px * var(--inv, 1));right:0;background:var(--face);border:1px solid color-mix(in oklab,var(--fg) 12%, transparent);
+    border-radius:12px;padding:8px;min-width:140px;box-shadow:0 10px 30px rgba(0,0,0,0.15);z-index:100;display:none;flex-direction:column;gap:4px;
+    transform:scale(var(--inv, 1));transform-origin:top right}
+  .w-menu.show{display:flex}
+  .w-menu button{background:transparent;border:none;color:var(--fg);padding:6px 10px;text-align:left;font-size:12px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .w-menu button:hover{background:color-mix(in oklab,var(--fg) 8%, transparent)}
+  .w-menu .check{font-size:10px;opacity:0}
+  .w-menu button.on .check{opacity:1}
   /* slide indicator */
   #pager{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:6px;opacity:0;transition:opacity .3s;z-index:5}
   #pager.show{opacity:.6}
@@ -159,6 +176,11 @@
     </div>
 
     <div class="row">
+      <div><label>Use Fahrenheit</label></div>
+      <div class="switch" id="swunit"></div>
+    </div>
+
+    <div class="row">
       <div><label>Accent color</label></div>
       <input type="color" id="accent" style="width:48px;height:32px;border:0;background:transparent;cursor:pointer"/>
     </div>
@@ -201,12 +223,13 @@
     {id:"binary",       name:"Binary"},
     {id:"minimal",      name:"Minimal"},
     {id:"mega",         name:"Mega Digital"},
+    {id:"zones",        name:"World Clock"},
     {id:"widgets",      name:"Custom Widgets"},
   ];
 
   const defaults = {
     tz:"Europe/Oslo", defSlide:"analog", h24:true, sec:true,
-    glow:false, dark:false, auto:false, accent:"",
+    glow:false, dark:false, auto:false, accent:"", useF:false,
     widgets:[
       {type:"time",   x:80,  y:120},
       {type:"date",   x:80,  y:260},
@@ -252,7 +275,10 @@
         <line class="s" x1="0" y1="10" x2="0" y2="-42" stroke-width=".7"/>
         <circle class="pin" r="1.6"/>
       </svg>
-      ${withDate ? `<div class="date" data-date></div>` : ``}
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        ${withDate ? `<div class="date" data-date></div>` : ``}
+        <div class="date" style="font-size:0.6em;letter-spacing:0.1em" data-weather-inline></div>
+      </div>
     `;
     const ticks = el.querySelector("#ticks"), nums = el.querySelector("#nums");
     for(let i=0;i<60;i++){
@@ -270,7 +296,12 @@
   }
 
   function buildDigital(el, withDate){
-    el.innerHTML = `<div class="digital" data-time></div>${withDate?`<div class="date" data-date></div>`:``}`;
+    el.innerHTML = `
+      <div class="digital" data-time></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        ${withDate?`<div class="date" data-date></div>`:``}
+        <div class="date" style="font-size:0.7em;letter-spacing:0.15em" data-weather-inline></div>
+      </div>`;
   }
 
   function buildFlip(el){
@@ -303,8 +334,33 @@
     el.innerHTML = `<div class="digital" style="font-size:clamp(100px,32vw,500px);font-weight:900;letter-spacing:-0.05em" data-time data-mini></div>`;
   }
 
+
+
+  function buildZones(el){
+    el.innerHTML = `<div class="zones-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:40px;width:80vw;max-width:1000px">
+      <div class="zone-item" data-tz="America/New_York">
+        <div class="z-name" style="font-size:12px;color:var(--muted);letter-spacing:0.2em;text-transform:uppercase">New York</div>
+        <div class="z-time" style="font-size:40px;font-weight:200">--:--</div>
+      </div>
+      <div class="zone-item" data-tz="Europe/London">
+        <div class="z-name" style="font-size:12px;color:var(--muted);letter-spacing:0.2em;text-transform:uppercase">London</div>
+        <div class="z-time" style="font-size:40px;font-weight:200">--:--</div>
+      </div>
+      <div class="zone-item" data-tz="Asia/Tokyo">
+        <div class="z-name" style="font-size:12px;color:var(--muted);letter-spacing:0.2em;text-transform:uppercase">Tokyo</div>
+        <div class="z-time" style="font-size:40px;font-weight:200">--:--</div>
+      </div>
+    </div>`;
+  }
+
   function buildWidgets(el){
     el.innerHTML = `<div id="widgetcanvas" style="position:relative;width:100vw;height:100vh"></div>`;
+    el.querySelector("#widgetcanvas").onclick = (e)=>{
+      if(e.target.id === "widgetcanvas") {
+        selectedWidgetId = null;
+        renderWidgets();
+      }
+    };
   }
 
   function buildAll(){
@@ -322,6 +378,7 @@
       else if(s.id==="binary") buildBinary(el);
       else if(s.id==="minimal") buildMinimal(el);
       else if(s.id==="mega") buildMega(el);
+      else if(s.id==="zones") buildZones(el);
       else if(s.id==="widgets") buildWidgets(el);
     });
   }
@@ -409,6 +466,20 @@
       else if(t==="weekday") v.textContent = p.weekday;
       else if(t==="year") v.textContent = p.year;
       else if(t==="tz") v.textContent = cfg.tz.split("/").pop().replace("_"," ");
+      else if(t==="weather") v.textContent = weatherData ? Math.round(weatherData.temperature)+"°C" : "--";
+      else if(t==="battery") v.textContent = batteryLevel;
+      else if(t==="week") {
+        const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+3-(d.getDay()+6)%7);
+        const w1 = new Date(d.getFullYear(),0,4);
+        v.textContent = "W"+Math.round(((d-w1)/864e5+1)/7+0.5);
+      }
+    });
+
+    // world clock slide
+    document.querySelectorAll(".zone-item").forEach(z=>{
+      const tz = z.dataset.tz;
+      const zp = fmtParts(now, tz);
+      z.querySelector(".z-time").textContent = `${zp.hour}:${zp.minute}`;
     });
   }
   setInterval(tick, 200); tick();
@@ -416,6 +487,7 @@
   // ---------- slides ----------
   let idx = Math.max(0, SLIDES.findIndex(s=>s.id===cfg.defSlide));
   if(idx<0) idx=0;
+  let selectedWidgetId = null;
   function applyGlow(){
     const slideId = SLIDES[idx].id;
     const slideGlow = slideId.endsWith("-glow");
@@ -445,6 +517,14 @@
     else if(e.key.toLowerCase()==="f"){ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
     else if(e.key.toLowerCase()==="g"){ cfg.glow=!cfg.glow; save(); applyGlow(); syncSettings(); }
     else if(e.key.toLowerCase()==="s") openPanel();
+    else if((e.key==="Delete" || e.key==="Backspace") && selectedWidgetId){
+      const idx = cfg.widgets.findIndex(w=>w.id === selectedWidgetId);
+      if(idx!==-1){
+        cfg.widgets.splice(idx,1);
+        selectedWidgetId = null;
+        save(); renderWidgets();
+      }
+    }
   });
 
   let tx=0,ty=0;
@@ -500,6 +580,7 @@
     setSwitch("swglow", cfg.glow);
     setSwitch("swdark", cfg.dark);
     setSwitch("swauto", cfg.auto);
+    setSwitch("swunit", cfg.useF);
     document.getElementById("accent").value = cfg.accent || "#111111";
     document.documentElement.classList.toggle("dark", cfg.dark);
     if(cfg.accent){
@@ -518,6 +599,7 @@
   bindSwitch("sw24","h24"); bindSwitch("swsec","sec"); bindSwitch("swglow","glow");
   bindSwitch("swdark","dark");
   bindSwitch("swauto","auto",setupAuto);
+  bindSwitch("swunit","useF",()=>{tick(); updateWeatherUI();});
   tzSel.addEventListener("change",()=>{cfg.tz=tzSel.value;save();tick();});
   dsSel.addEventListener("change",()=>{cfg.defSlide=dsSel.value;save();});
   document.getElementById("accent").addEventListener("input",e=>{cfg.accent=e.target.value;save();syncSettings();});
@@ -535,38 +617,135 @@
   }
   setupAuto();
 
+  // ---------- weather logic ----------
+  let weatherData = null;
+  async function fetchWeather(){
+    try {
+      const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=59.91&longitude=10.75&current_weather=true");
+      const data = await res.json();
+      weatherData = data.current_weather;
+      updateWeatherUI();
+    } catch(e) { console.error("Weather fetch failed", e); }
+  }
+  function updateWeatherUI(){
+    if(!weatherData) return;
+    const icons = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",61:"🌧️",71:"🌨️",95:"⛈️"};
+    const icon = icons[weatherData.weathercode] || "☀️";
+    const tempC = weatherData.temperature;
+    const temp = cfg.useF ? Math.round(tempC * 9/5 + 32) : Math.round(tempC);
+    const unit = cfg.useF ? "°F" : "°C";
+    
+    document.querySelectorAll("#w-icon").forEach(n=>n.textContent = icon);
+    document.querySelectorAll("#w-temp").forEach(n=>n.textContent = temp + unit);
+    document.querySelectorAll("#w-desc").forEach(n=>n.textContent = "Current Weather");
+    document.querySelectorAll("[data-weather-inline]").forEach(n=>{
+      const showLoc = n.dataset.loc === "true";
+      n.textContent = `${icon} ${temp}${unit}${showLoc ? " · Oslo" : ""}`;
+    });
+    document.querySelectorAll("[data-type=temp]").forEach(n=>{
+      const w = cfg.widgets.find(x=>x.id === n.dataset.wid);
+      const val = n.querySelector(".wval");
+      if(w && w.showLoc) val.textContent = `${temp}${unit} ${icon} Oslo`;
+      else val.textContent = `${temp}${unit} ${icon}`;
+    });
+    document.querySelectorAll("[data-type=weather]").forEach(n=>{
+      const val = n.querySelector(".wval");
+      val.textContent = icon;
+    });
+  }
+  setInterval(fetchWeather, 600000); fetchWeather();
+
+  // ---------- battery logic ----------
+  let batteryLevel = "--";
+  if(navigator.getBattery) navigator.getBattery().then(b=>{
+    const upd = ()=>{batteryLevel = Math.round(b.level*100)+"%"; tick();};
+    upd(); b.addEventListener("levelchange", upd);
+  });
+
   // ---------- widgets ----------
   const WTYPES = [
     {t:"time",label:"Time"},{t:"seconds",label:"Seconds"},{t:"date",label:"Date"},
-    {t:"weekday",label:"Weekday"},{t:"year",label:"Year"},{t:"tz",label:"Zone"}
+    {t:"weekday",label:"Weekday"},{t:"year",label:"Year"},{t:"tz",label:"Zone"},
+    {t:"temp",label:"Temperature"},{t:"weather",label:"Weather Icon"},{t:"battery",label:"Battery"},
+    {t:"week",label:"Week"},{t:"analog",label:"Analog Clock"}
   ];
+  
   const wadd = document.getElementById("widgetadd");
+  wadd.innerHTML = `<button id="plus-btn" style="width:44px;height:44px;border-radius:50%;font-size:24px;display:flex;align-items:center;justify-content:center">+</button>
+    <div id="plus-menu" class="w-menu" style="bottom:50px;right:0;top:auto"></div>`;
+  const pbtn = document.getElementById("plus-btn");
+  const pmenu = document.getElementById("plus-menu");
+  pbtn.onclick = (e)=>{e.stopPropagation(); pmenu.classList.toggle("show");};
   WTYPES.forEach(w=>{
-    const b=document.createElement("button");b.textContent="+ "+w.label;
-    b.onclick=()=>{cfg.widgets.push({type:w.t,x:120,y:120});save();renderWidgets();};
-    wadd.appendChild(b);
+    const b=document.createElement("button");b.textContent=w.label;
+    b.onclick=()=>{cfg.widgets.push({type:w.t,x:120,y:120});save();renderWidgets();pmenu.classList.remove("show");};
+    pmenu.appendChild(b);
   });
 
   function renderWidgets(){
     const c = document.getElementById("widgetcanvas"); if(!c) return;
     c.innerHTML="";
     cfg.widgets.forEach((w,i)=>{
+      if(!w.id) w.id = Math.random().toString(36).substr(2,9);
       const el=document.createElement("div");
-      el.className="widget"; el.dataset.type=w.type;
+      el.className="widget"; el.dataset.type=w.type; el.dataset.wid=w.id;
+      if(w.hideLbl) el.classList.add("hide-lbl");
+      if(selectedWidgetId === w.id) el.classList.add("selected");
       el.style.left=w.x+"px"; el.style.top=w.y+"px";
-      if(w.s) el.style.transform = `scale(${w.s})`;
-      el.innerHTML=`<button class="x" title="Remove">×</button>
-        <div class="wlbl">${w.type}</div><div class="wval">--</div>
-        <div class="resizer"></div>`;
+      const s = w.s || 1;
+      el.style.transform = `scale(${s})`;
+      el.style.setProperty("--inv", 1/s);
+      const isAnalog = w.type === 'analog';
+      if(w.bold) el.classList.add("bold");
+      el.innerHTML=`
+        <div class="controls">
+          <button class="edit" title="Edit">✎</button>
+          <button class="x" title="Remove">×</button>
+        </div>
+        <div class="wlbl">${w.type}</div>
+        <div class="wval">${isAnalog ? `
+          <svg class="clock" viewBox="-50 -50 100 100" style="width:100px;height:100px">
+            <circle class="face" r="48"/>
+            <line class="h" x1="0" y1="6" x2="0" y2="-26" stroke-width="2.5"/>
+            <line class="m" x1="0" y1="8" x2="0" y2="-38" stroke-width="1.8"/>
+            <line class="s" x1="0" y1="10" x2="0" y2="-42" stroke-width="1"/>
+          </svg>` : '--'}</div>
+        <div class="resizer"></div>
+        <div class="w-menu">
+          <button class="opt-lbl ${w.hideLbl?'on':''}">Hide Headline <span class="check">✓</span></button>
+          <button class="opt-bold ${w.bold?'on':''}">Bold Text <span class="check">✓</span></button>
+          ${w.type==='temp'?`<button class="opt-loc ${w.showLoc?'on':''}">Show Location <span class="check">✓</span></button>`:''}
+        </div>`;
+      
+      const menu = el.querySelector(".w-menu");
       el.querySelector(".x").onclick=(e)=>{e.stopPropagation();cfg.widgets.splice(i,1);save();renderWidgets();};
+      el.querySelector(".edit").onclick=(e)=>{
+        e.stopPropagation();
+        document.querySelectorAll(".w-menu").forEach(m=>m!==menu&&m.classList.remove("show"));
+        menu.classList.toggle("show");
+      };
+      el.querySelector(".opt-lbl").onclick=(e)=>{
+        e.stopPropagation(); w.hideLbl=!w.hideLbl; save(); renderWidgets();
+      };
+      el.querySelector(".opt-bold").onclick=(e)=>{
+        e.stopPropagation(); w.bold=!w.bold; save(); renderWidgets();
+      };
+      if(w.type==='temp'){
+        el.querySelector(".opt-loc").onclick=(e)=>{
+          e.stopPropagation(); w.showLoc=!w.showLoc; save(); renderWidgets(); updateWeatherUI();
+        };
+      }
       
       // drag & resize
       let sx,sy,ox,oy,os,mode=null;
       el.addEventListener("pointerdown",e=>{
-        if(e.target.classList.contains("x"))return;
+        if(e.target.closest(".controls") || e.target.closest(".w-menu"))return;
+        selectedWidgetId = w.id;
+        renderWidgets();
         sx=e.clientX; sy=e.clientY; ox=w.x; oy=w.y; os=w.s||1;
         mode = e.target.classList.contains("resizer") ? "resize" : "drag";
         el.setPointerCapture(e.pointerId);
+        document.querySelectorAll(".w-menu").forEach(m=>m.classList.remove("show"));
       });
       el.addEventListener("pointermove",e=>{
         if(!mode)return;
@@ -575,8 +754,9 @@
           el.style.left=w.x+"px"; el.style.top=w.y+"px";
         } else {
           const dx = e.clientX-sx;
-          w.s = Math.max(0.5, Math.min(5, os + dx/150));
+          w.s = Math.max(0.2, Math.min(15, os + dx/150));
           el.style.transform = `scale(${w.s})`;
+          el.style.setProperty("--inv", 1/w.s);
         }
       });
       el.addEventListener("pointerup",()=>{if(mode){mode=null;save();}});
