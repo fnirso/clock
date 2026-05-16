@@ -1,55 +1,51 @@
-# Dynamic Clock Display
+# Dynamic Clock & Dashboard
 
-This project provides a versatile and customizable full-screen clock display, ideal for various environments such as dashboards, presentations, or as a stylish desktop accessory. It features multiple clock styles, including analog, digital, word-based, binary, and a new 'Mega Digital' mode, alongside extensive customization options.
+A versatile, minimalist, and highly customizable full-screen clock and dashboard application. Designed for focus, style, and utility, it transforms any screen into a professional timekeeping station or a personalized information hub.
+
+## [Live Version: fnirso.github.io/clock/](https://fnirso.github.io/clock/)
 
 ## Features
 
-The clock offers a range of display modes, each designed to provide time information in a unique and aesthetically pleasing manner:
+### Core Clock Styles
+The application features over a dozen distinct clock faces, each with its own aesthetic:
+- **Analog & Digital**: Classic designs with optional date and glow effects.
+- **Flip Clock**: A retro-inspired digital display with smooth transitions.
+- **Word Clock**: A human-readable display that describes time in words (e.g., "Quarter past ten").
+- **Binary Clock**: A unique BCD (Binary Coded Decimal) display for tech enthusiasts.
+- **Minimal & Mega Digital**: From ultra-thin fonts to massive, screen-filling bold numbers.
+- **World Clock**: Simultaneous monitoring of multiple time zones (New York, London, Tokyo).
 
-*   **Analog**: A classic analog clock face.
-*   **Analog · Date**: Analog clock with the current date displayed.
-*   **Analog · Glow**: Analog clock with an added glow effect.
-*   **Digital**: A standard digital time display.
-*   **Digital · Date**: Digital clock including the current date.
-*   **Digital · Glow**: Digital clock with a glow effect.
-*   **Flip**: A retro flip-card style digital clock.
-*   **Word Clock**: Displays the time in a human-readable word format.
-*   **Binary**: Shows the time in binary code.
-*   **Minimal**: A simplified digital display with a very light font weight.
-*   **Mega Digital**: A new, extra-bold digital clock that fills almost the entire screen.
-*   **Custom Widgets**: Allows for a customizable layout of various time-related widgets.
+### Custom Dashboard (Widgets)
+The **Custom Widgets** slide allows you to build your own information layout. You can freely add, position, and scale the following widgets:
+- **Time & Date**: Standard time, seconds, date, weekday, year, and ISO week number.
+- **Weather & Environment**: Real-time **Temperature** (Celsius/Fahrenheit) and a minimalist **Weather Icon**.
+- **System**: Live **Battery Level** monitoring.
+- **Analog Clock**: A mini-analog face for your custom dashboard.
 
-## Customization
+## Customization & Controls
 
-Access the settings panel by clicking the gear icon in the top-left corner (appears on hover) or by pressing `S` on your keyboard. Here, you can configure various aspects of the clock:
+### Interactive Dashboard
+- **Move & Scale**: Drag widgets to position them. Use the handle in the bottom-right corner to scale widgets from **0.2x up to 15x** their original size.
+- **Selection & Deletion**: Click a widget to select it (highlighted in your accent color). Press <kbd>Delete</kbd> or <kbd>Backspace</kbd> to remove it.
+- **Widget Settings**: Hover over a widget and click the **pencil icon (✎)** to open a pop-down menu. Toggle properties like **Bold Text**, **Hide Headline**, or **Show Location** (for temperature).
+- **Add Widgets**: Click the **"+" button** in the bottom-right corner of the widgets slide to reveal the widget library.
 
-*   **Time Zone**: Select your preferred time zone.
-*   **Default Slide**: Choose which slide loads automatically on startup.
-*   **24-hour format**: Toggle between 12-hour and 24-hour time display.
-*   **Show seconds**: Enable or disable the display of seconds.
-*   **Glow effect**: Apply a subtle glow to the clock display.
-*   **Dark mode**: Toggle between light and dark themes.
-*   **Auto cycle slides**: Automatically switch between slides every 30 seconds.
-*   **Accent color**: Customize the accent color used in various clock elements.
+### Global Settings
+Access the main settings panel via the **gear icon** (top-left, reveals on hover) or by pressing <kbd>S</kbd>.
+- **Time Zone**: Select from over 30 major world time zones.
+- **Unit Toggle**: Switch between **Celsius** and **Fahrenheit** globally.
+- **Visuals**: Modern **sliding toggles** for Dark Mode, Glow Effects, 24-hour format, and Auto-cycle mode.
+- **Accent Color**: Personalize the interface with a custom color for hands, highlights, and icons.
 
-## Controls
-
-The clock can be controlled using keyboard shortcuts or touch gestures:
-
-| Key/Gesture    | Action                               |
-| :------------- | :----------------------------------- |
-| <kbd>Space</kbd> | Toggle dark mode                     |
-| <kbd>← →</kbd>  | Switch slides                        |
-| <kbd>Swipe</kbd>  | Switch slides (touch)                |
-| <kbd>F</kbd>      | Toggle fullscreen                    |
-| <kbd>G</kbd>      | Toggle glow effect                   |
-| <kbd>S</kbd>      | Open settings panel                  |
-| <kbd>Hover ↖</kbd> | Reveal gear icon (settings)          |
-
-## Online Version
-
-You can access and use the clock directly online at [fnirso.github.io/clock/](https://fnirso.github.io/clock/). This version is suitable for everyday use and does not require any local setup.
+### Keyboard Shortcuts
+| Key | Action |
+| :--- | :--- |
+| <kbd>Space</kbd> | Toggle Dark/Light mode |
+| <kbd>← / →</kbd> | Switch between slides |
+| <kbd>S</kbd> | Open Settings panel |
+| <kbd>G</kbd> | Toggle Glow effect |
+| <kbd>F</kbd> | Toggle Fullscreen mode |
+| <kbd>Delete / Backspace</kbd> | Remove selected widget |
 
 ## Usage
-
-To use this clock, simply open the `index.html` file in any modern web browser. No installation or additional setup is required. You can then navigate through the different clock displays and customize settings as needed.
+Simply open `index.html` in any modern web browser. All settings and widget layouts are automatically saved to your browser's local storage, ensuring your personalized dashboard is ready every time you return.
