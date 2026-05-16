@@ -46,6 +46,10 @@ The clock can be controlled using keyboard shortcuts or touch gestures:
 | <kbd>S</kbd>      | Open settings panel                  |
 | <kbd>Hover ↖</kbd> | Reveal gear icon (settings)          |
 
+## Online Version
+
+You can access and use the clock directly online at [fnirso.github.io/clock/](https://fnirso.github.io/clock/). This version is suitable for everyday use and does not require any local setup.
+
 ## Usage
 
-To use this clock, simply open the `clock.html` file in any modern web browser. No installation or additional setup is required. You can then navigate through the different clock displays and customize settings as needed.
+To use this clock, simply open the `index.html` file in any modern web browser. No installation or additional setup is required. You can then navigate through the different clock displays and customize settings as needed.
