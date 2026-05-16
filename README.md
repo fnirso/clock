@@ -29,7 +29,7 @@ The **Custom Widgets** slide allows you to build your own information layout. Yo
 - **Selection & Deletion**: Click a widget to select it (highlighted in your accent color). Press <kbd>Delete</kbd> or <kbd>Backspace</kbd> to remove it.
 - **Widget Settings**: Hover over a widget and click the **pencil icon (✎)** to open a pop-down menu. Toggle properties like **Bold Text**, **Hide Headline**, or **Show Location** (for temperature).
 - **Add Widgets**: Click the **"+" button** in the bottom-right corner of the widgets slide to reveal the widget library.
-- **Save dashboards**: Save dashboards for later use, they can be later deleted in the **Global settings**.
+- **Save dashboards**: Save dashboards by clicking the save icon over the "+" icon in the dashboards page (Visible on hover), they can be later deleted in the **Global settings**.
 
 ### Global Settings
 Access the main settings panel via the **gear icon** (top-left, reveals on hover) or by pressing <kbd>S</kbd>.
